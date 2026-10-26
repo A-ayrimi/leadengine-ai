@@ -1,0 +1,69 @@
+//@version=6
+indicator("Pivot Signals - 3 TF (No Repaint)", overlay=true, max_labels_count=300)
+
+f_labelSize(v) =>
+    switch v
+        1 => size.tiny
+        2 => size.small
+        3 => size.normal
+        4 => size.large
+        => size.huge
+
+// پیوت‌ها و زمان واقعی بار پیوت (در گذشته) از تایم‌فریم مورد نظر
+f_pivotData(L, R) =>
+    ph = ta.pivothigh(high, L, R)
+    pl = ta.pivotlow(low, L, R)
+    [ph, pl, na(ph) ? na : time[R], na(pl) ? na : time[R]]
+
+f_instance(tf, L, R, showLabels, buyCol, sellCol, sz, tag) =>
+    [ph, pl, phT, plT] = request.security(syminfo.tickerid, tf, f_pivotData(L, R),
+         barmerge.gaps_off, barmerge.lookahead_off)
+
+    // روی تایم‌فریم بالاتر، مقدار پیوت تا پایان آن بار تکرار می‌شود؛ فقط اولین بار را می‌گیریم
+    newHigh = not na(phT) and na(phT[1]) and barstate.isconfirmed
+    newLow  = not na(plT) and na(plT[1]) and barstate.isconfirmed
+
+    if newHigh
+        if showLabels
+            label.new(phT, ph, tag + " Sell", xloc.bar_time, yloc.price,
+                 color.new(sellCol, 0), label.style_label_down, color.white, sz)
+        alert(tag + " Sell signal (confirmed pivot high)", alert.freq_once_per_bar_close)
+
+    if newLow
+        if showLabels
+            label.new(plT, pl, tag + " Buy", xloc.bar_time, yloc.price,
+                 color.new(buyCol, 0), label.style_label_up, color.white, sz)
+        alert(tag + " Buy signal (confirmed pivot low)", alert.freq_once_per_bar_close)
+
+// ---------- Instance 1 ----------
+g1    = "Instance 1"
+tf1   = input.timeframe("15", "Signal TF", group=g1)
+L1    = input.int(10, "Left bars", minval=2, group=g1)
+R1    = input.int(5, "Right bars", minval=1, group=g1)
+show1 = input.bool(true, "Show labels", group=g1)
+buy1  = input.color(#03ff85, "Buy color", group=g1)
+sell1 = input.color(#fc0808, "Sell color", group=g1)
+sz1   = f_labelSize(input.int(3, "Label size", minval=1, maxval=5, group=g1))
+f_instance(tf1, L1, R1, show1, buy1, sell1, sz1, "I1")
+
+// ---------- Instance 2 ----------
+g2    = "Instance 2"
+tf2   = input.timeframe("60", "Signal TF", group=g2)
+L2    = input.int(15, "Left bars", minval=2, group=g2)
+R2    = input.int(5, "Right bars", minval=1, group=g2)
+show2 = input.bool(true, "Show labels", group=g2)
+buy2  = input.color(#00e676, "Buy color", group=g2)
+sell2 = input.color(#ff1744, "Sell color", group=g2)
+sz2   = f_labelSize(input.int(3, "Label size", minval=1, maxval=5, group=g2))
+f_instance(tf2, L2, R2, show2, buy2, sell2, sz2, "I2")
+
+// ---------- Instance 3 ----------
+g3    = "Instance 3"
+tf3   = input.timeframe("240", "Signal TF", group=g3)
+L3    = input.int(20, "Left bars", minval=2, group=g3)
+R3    = input.int(8, "Right bars", minval=1, group=g3)
+show3 = input.bool(true, "Show labels", group=g3)
+buy3  = input.color(#69f0ae, "Buy color", group=g3)
+sell3 = input.color(#ff5252, "Sell color", group=g3)
+sz3   = f_labelSize(input.int(3, "Label size", minval=1, maxval=5, group=g3))
+f_instance(tf3, L3, R3, show3, buy3, sell3, sz3, "I3")

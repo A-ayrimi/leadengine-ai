@@ -1,0 +1,50 @@
+//@version=6
+indicator('GoldSignals ayrimi', 'GoldSignals ayrimi', true, format.price, max_labels_count = 200, max_lines_count = 50)
+
+// ---------------------   Inputs and Configurations    ---------------------//
+// Timeframe for non-repainting signals
+timeframe_input = input.timeframe("D", "Timeframe") // Daily timeframe for Gold
+
+// RSI Parameters
+rsi_length = input.int(14, "RSI Length")
+rsi_overbought = input.int(70, "RSI Overbought Level")
+rsi_oversold = input.int(30, "RSI Oversold Level")
+
+// Moving Average Parameters
+ma_length_fast = input.int(50, "Fast MA Length")
+ma_length_slow = input.int(200, "Slow MA Length")
+
+// Colors
+buycolor = color.new(color.green, 0)
+sellcolor = color.new(color.red, 0)
+
+// Label Size
+labelsize = size.normal
+
+// ---------------------   Main Logic of Script    ---------------------//
+// Get RSI values from higher timeframe using request.security
+rsi_value = request.security(syminfo.tickerid, timeframe_input, ta.rsi(close, rsi_length))
+
+// Get Moving Averages from higher timeframe using request.security
+ma_fast = request.security(syminfo.tickerid, timeframe_input, ta.sma(close, ma_length_fast))
+ma_slow = request.security(syminfo.tickerid, timeframe_input, ta.sma(close, ma_length_slow))
+
+// Generate Buy/Sell Signals
+buy_signal = ta.crossover(ma_fast, ma_slow) and rsi_value <= rsi_oversold
+sell_signal = ta.crossunder(ma_fast, ma_slow) and rsi_value >= rsi_overbought
+
+// Debugging: Plot values to the chart for troubleshooting
+plot(rsi_value, "RSI", color=color.blue)
+plot(ma_fast, "Fast MA", color=color.green)
+plot(ma_slow, "Slow MA", color=color.red)
+
+// ---------------------   Signal Generation    ---------------------//
+if buy_signal
+    label.new(bar_index, low, "Buy", xloc.bar_index, yloc.price, color=buycolor, style=label.style_label_up, textcolor=color.white, size=labelsize)
+    alert("Buy signal generated!!!", alert.freq_once_per_bar_close)
+
+if sell_signal
+    label.new(bar_index, high, "Sell", xloc.bar_index, yloc.price, color=sellcolor, style=label.style_label_down, textcolor=color.white, size=labelsize)
+    alert("Sell signal generated!!!", alert.freq_once_per_bar_close)
+
+// ---------------------   End of Script    ---------------------//

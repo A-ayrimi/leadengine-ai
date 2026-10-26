@@ -1,0 +1,69 @@
+//@version=6
+//@author = ayrimi
+
+indicator('Pivot Hunter Order Block', 'Pivot Hunter OB', true, format.price, max_labels_count = 200, max_lines_count = 200, max_boxes_count = 200)
+
+//---------------------   Internal Pivot Engine   ---------------------//
+
+calculateSignal(float srcLow, float srcHigh, int depth, int deviation, int backstep) =>
+    var int direction = 0
+    var float lastPrice1 = na
+    var float lastPrice2 = na
+    
+    float ph = ta.pivothigh(srcHigh, depth, backstep)
+    float pl = ta.pivotlow(srcLow, depth, backstep)
+    
+    if not na(ph)
+        direction := 1
+        lastPrice1 := ph
+        lastPrice2 := ph
+    else if not na(pl)
+        direction := -1
+        lastPrice1 := pl
+        lastPrice2 := pl
+
+    [direction, lastPrice1, lastPrice2]
+
+//---------------------   Inputs & Settings   ---------------------//
+
+DEPTH_ENGINE     = input.int(30, 'Depth', minval = 1, step = 1, group = 'Algorithm Settings')
+DEVIATION_ENGINE = input.int(5, 'Deviation', minval = 1, step = 1, group = 'Algorithm Settings')
+BACKSTEP_ENGINE  = input.int(5, 'Backstep', minval = 2, step = 1, group = 'Algorithm Settings')
+
+bullColor   = input.color(#03ff85, 'Bullish Order Block', group = 'Visual Settings')
+bearColor   = input.color(#fc0808, 'Bearish Order Block', group = 'Visual Settings')
+boxTransp   = input.int(85, 'OB Transparency (0-100)', minval = 0, maxval = 100, group = 'Visual Settings')
+lineLength  = input.int(45, 'Order Block Line Length (Bars)', minval = 5, maxval = 300, group = 'Visual Settings')
+
+repaint     = input.bool(false, 'Repaint', group = 'General Settings')
+
+//---------------------   Main Script Logic   ---------------------//
+
+[direction, zee1_price, zee2_price] = calculateSignal(low, high, DEPTH_ENGINE, DEVIATION_ENGINE, BACKSTEP_ENGINE)
+
+// Plot Order Blocks & Clean Support/Resistance Lines
+if not repaint and barstate.isconfirmed
+    if direction != direction[1]
+        bool isBuy = direction < 0
+        color mainColor = isBuy ? bullColor : bearColor
+        
+        // Define OB price range
+        float topPrice    = isBuy ? high[1] : high[1]
+        float bottomPrice = isBuy ? low[1] : low[1]
+        float lineLevel   = isBuy ? low[1] : high[1]
+        
+        // 1. Order Block Box (Extended 3x)
+        box.new(left = bar_index - 1, top = topPrice, right = bar_index + lineLength, bottom = bottomPrice, xloc = xloc.bar_index, border_color = mainColor, border_width = 1, border_style = line.style_solid, bgcolor = color.new(mainColor, boxTransp))
+        
+        // 2. Extended Support/Resistance Level Line
+        line.new(x1 = bar_index - 1, y1 = lineLevel, x2 = bar_index + lineLength, y2 = lineLevel, xloc = xloc.bar_index, color = mainColor, style = line.style_dashed, width = 1)
+        
+        // 3. Order Block Price Label
+        label.new(x = bar_index + lineLength, y = lineLevel, text = (isBuy ? "OB Bullish " : "OB Bearish ") + str.tostring(lineLevel, "#.##"), xloc = xloc.bar_index, yloc = yloc.price, color = color.new(color.black, 100), textcolor = mainColor, style = label.style_label_left, size = size.small)
+
+// Alerts on direction change
+if bool(ta.change(direction)) and barstate.isconfirmed
+    if direction > 0
+        alert("Bearish Order Block Formed!", alert.freq_once_per_bar_close)
+    else
+        alert("Bullish Order Block Formed!", alert.freq_once_per_bar_close)
